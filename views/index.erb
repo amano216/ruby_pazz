@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ruby学習パズル</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎮 Ruby学習パズル</h1>
+      <p class="subtitle">コードを書いて問題を解こう！</p>
+    </header>
+    
+    <div class="main-content">
+      <div class="sidebar">
+        <h3>問題リスト</h3>
+        
+        <div class="level-tabs">
+          <button class="level-tab active" data-level="all">全て</button>
+          <button class="level-tab" data-level="初級">初級</button>
+          <button class="level-tab" data-level="中級">中級</button>
+          <button class="level-tab" data-level="上級">上級</button>
+        </div>
+        
+        <div class="puzzle-list">
+          <% @puzzles.each do |puzzle| %>
+            <div class="puzzle-item <%= 'completed' if @completed.include?(puzzle[:id]) %> <%= 'current' if puzzle[:id] == @current_puzzle[:id] %>" 
+                 data-id="<%= puzzle[:id] %>"
+                 data-level="<%= puzzle[:level] %>">
+              <span class="puzzle-number"><%= puzzle[:id] %></span>
+              <span class="puzzle-title"><%= puzzle[:title] %></span>
+              <% if @completed.include?(puzzle[:id]) %>
+                <span class="checkmark">✓</span>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+        
+        <div class="progress">
+          <p>進捗: <%= @completed.length %> / <%= @puzzles.length %></p>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: <%= (@completed.length.to_f / @puzzles.length * 100).round %>%"></div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="puzzle-area">
+        <div class="puzzle-header">
+          <h2>
+            <span class="level-badge level-<%= @current_puzzle[:level] %>"><%= @current_puzzle[:level] %></span>
+            問題 <%= @current_puzzle[:id] %>: <%= @current_puzzle[:title] %>
+          </h2>
+        </div>
+        
+        <div class="puzzle-description">
+          <p><%= @current_puzzle[:description] %></p>
+          <div class="hint">
+            <span class="hint-label">ヒント:</span> 
+            <span id="hint-text" style="display: none;"><%= @current_puzzle[:hint] %></span>
+            <button id="show-hint" class="hint-button">ヒントを見る</button>
+          </div>
+        </div>
+        
+        <div class="code-editor">
+          <div class="editor-header">
+            <span>Rubyコード</span>
+            <div class="editor-actions">
+              <button id="run-code" class="run-button">実行 ▶</button>
+              <button id="reset-code" class="reset-button">リセット</button>
+            </div>
+          </div>
+          <textarea id="code-input" class="code-input" spellcheck="false"><%= @current_puzzle[:initial_code] %></textarea>
+        </div>
+        
+        <div class="output-area">
+          <div class="output-header">実行結果</div>
+          <div id="output" class="output"></div>
+        </div>
+      </div>
+    </div>
+    
+    <form action="/reset" method="post" class="reset-form">
+      <button type="submit" class="full-reset-button">全てリセット</button>
+    </form>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const codeInput = document.getElementById('code-input');
+      const runButton = document.getElementById('run-code');
+      const resetButton = document.getElementById('reset-code');
+      const output = document.getElementById('output');
+      const showHintButton = document.getElementById('show-hint');
+      const hintText = document.getElementById('hint-text');
+      const puzzleItems = document.querySelectorAll('.puzzle-item');
+      const levelTabs = document.querySelectorAll('.level-tab');
+      
+      const initialCode = codeInput.value;
+      let currentPuzzleId = <%= @current_puzzle[:id] %>;
+      
+      runButton.addEventListener('click', async function() {
+        const code = codeInput.value;
+        output.innerHTML = '<div class="loading">実行中...</div>';
+        
+        try {
+          const response = await fetch('/run_code', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              code: code,
+              puzzle_id: currentPuzzleId
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            output.innerHTML = `
+              <div class="success-message">
+                ${result.message}
+              </div>
+              <div class="output-content">
+                <strong>出力:</strong>
+                <pre>${escapeHtml(result.output)}</pre>
+              </div>
+            `;
+            
+            setTimeout(() => {
+              if (currentPuzzleId < <%= @puzzles.length %>) {
+                if (confirm('次の問題に進みますか？')) {
+                  location.reload();
+                }
+              } else {
+                alert('全ての問題をクリアしました！おめでとうございます！');
+              }
+            }, 1000);
+          } else {
+            let errorHtml = `<div class="error-message">${result.error}</div>`;
+            
+            if (result.output) {
+              errorHtml += `
+                <div class="output-content">
+                  <strong>あなたの出力:</strong>
+                  <pre>${escapeHtml(result.output)}</pre>
+                </div>
+              `;
+            }
+            
+            if (result.expected) {
+              errorHtml += `
+                <div class="output-content">
+                  <strong>期待される出力:</strong>
+                  <pre>${escapeHtml(result.expected)}</pre>
+                </div>
+              `;
+            }
+            
+            output.innerHTML = errorHtml;
+          }
+        } catch (error) {
+          output.innerHTML = `<div class="error-message">エラー: ${error.message}</div>`;
+        }
+      });
+      
+      resetButton.addEventListener('click', function() {
+        codeInput.value = initialCode;
+        output.innerHTML = '';
+      });
+      
+      showHintButton.addEventListener('click', function() {
+        hintText.style.display = 'inline';
+        showHintButton.style.display = 'none';
+      });
+      
+      puzzleItems.forEach(item => {
+        item.addEventListener('click', async function() {
+          const puzzleId = this.dataset.id;
+          
+          try {
+            const response = await fetch('/select_puzzle', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ puzzle_id: puzzleId })
+            });
+            
+            if (response.ok) {
+              location.reload();
+            }
+          } catch (error) {
+            console.error('Error:', error);
+          }
+        });
+      });
+      
+      // Level filter
+      levelTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+          levelTabs.forEach(t => t.classList.remove('active'));
+          this.classList.add('active');
+          
+          const level = this.dataset.level;
+          puzzleItems.forEach(item => {
+            if (level === 'all' || item.dataset.level === level) {
+              item.style.display = 'flex';
+            } else {
+              item.style.display = 'none';
+            }
+          });
+        });
+      });
+      
+      // Tab key support in textarea
+      codeInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const start = this.selectionStart;
+          const end = this.selectionEnd;
+          this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+          this.selectionStart = this.selectionEnd = start + 2;
+        }
+      });
+      
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+    });
+  </script>
+</body>
+</html>
