@@ -31,10 +31,15 @@ post '/run_code' do
   data = JSON.parse(request.body.read)
   code = data['code']
   puzzle_id = data['puzzle_id'].to_i
+  language = data['language'] || 'ruby'
   
   puzzle = PUZZLES.find { |p| p[:id] == puzzle_id }
   
-  result = run_ruby_code(code, puzzle[:test_cases])
+  result = if language == 'javascript'
+    run_javascript_code(code, puzzle[:test_cases])
+  else
+    run_ruby_code(code, puzzle[:test_cases])
+  end
   
   if result[:success]
     session[:completed] ||= []
@@ -90,6 +95,58 @@ helpers do
               success: false,
               output: stdout,
               expected: test[:expected],
+              error: "期待される出力と違います"
+            }
+          end
+        end
+      end
+      
+      {
+        success: true,
+        output: output,
+        message: "正解です！よくできました！"
+      }
+      
+    rescue Timeout::Error
+      {
+        success: false,
+        output: "",
+        error: "実行時間が長すぎます（2秒以内）"
+      }
+    rescue => e
+      {
+        success: false,
+        output: "",
+        error: "エラー: #{e.message}"
+      }
+    end
+  end
+
+  def run_javascript_code(code, test_cases)
+    begin
+      output = ""
+      success = true
+      
+      test_cases.each do |test|
+        Timeout::timeout(2) do
+          stdout, stderr, status = Open3.capture3('node', stdin_data: code)
+          
+          if stderr && !stderr.empty?
+            return {
+              success: false,
+              output: stderr,
+              error: "コードにエラーがあります"
+            }
+          end
+          
+          expected = test[:expected_js] || test[:expected]
+          if stdout == expected
+            output = stdout
+          else
+            return {
+              success: false,
+              output: stdout,
+              expected: expected,
               error: "期待される出力と違います"
             }
           end

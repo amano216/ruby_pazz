@@ -58,14 +58,19 @@
           <p><%= @current_puzzle[:description] %></p>
           <div class="hint">
             <span class="hint-label">ヒント:</span> 
-            <span id="hint-text" style="display: none;"><%= @current_puzzle[:hint] %></span>
+            <span id="hint-text" style="display: none;" data-hint-ruby="<%= @current_puzzle[:hint] %>" data-hint-js="<%= @current_puzzle[:hint_js] || @current_puzzle[:hint] %>"><%= @current_puzzle[:hint] %></span>
             <button id="show-hint" class="hint-button">ヒントを見る</button>
           </div>
         </div>
         
+        <div class="language-selector">
+          <button class="lang-btn active" data-lang="ruby">Ruby</button>
+          <button class="lang-btn" data-lang="javascript">JavaScript</button>
+        </div>
+        
         <div class="code-editor">
           <div class="editor-header">
-            <span>Rubyコード</span>
+            <span id="editor-language">Rubyコード</span>
             <div class="editor-actions">
               <button id="run-code" class="run-button">実行 ▶</button>
               <button id="reset-code" class="reset-button">リセット</button>
@@ -97,8 +102,46 @@
       const puzzleItems = document.querySelectorAll('.puzzle-item');
       const levelTabs = document.querySelectorAll('.level-tab');
       
-      const initialCode = codeInput.value;
+      const puzzleData = {
+        ruby: {
+          initialCode: <%= JSON.generate(@current_puzzle[:initial_code]) %>,
+          hint: <%= JSON.generate(@current_puzzle[:hint]) %>
+        },
+        javascript: {
+          initialCode: <%= JSON.generate(@current_puzzle[:initial_code_js] || "// JavaScriptで解いてみよう\n") %>,
+          hint: <%= JSON.generate(@current_puzzle[:hint_js] || @current_puzzle[:hint]) %>
+        }
+      };
+      
+      let currentLanguage = localStorage.getItem('selectedLanguage') || 'ruby';
       let currentPuzzleId = <%= @current_puzzle[:id] %>;
+      
+      const langButtons = document.querySelectorAll('.lang-btn');
+      const editorLanguageLabel = document.getElementById('editor-language');
+      
+      function setLanguage(lang) {
+        currentLanguage = lang;
+        localStorage.setItem('selectedLanguage', lang);
+        
+        langButtons.forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.lang === lang);
+        });
+        
+        editorLanguageLabel.textContent = lang === 'ruby' ? 'Rubyコード' : 'JavaScriptコード';
+        codeInput.value = puzzleData[lang].initialCode;
+        
+        if (hintText.style.display !== 'none') {
+          hintText.textContent = puzzleData[lang].hint;
+        }
+      }
+      
+      setLanguage(currentLanguage);
+      
+      langButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+          setLanguage(this.dataset.lang);
+        });
+      });
       
       runButton.addEventListener('click', async function() {
         const code = codeInput.value;
@@ -112,7 +155,8 @@
             },
             body: JSON.stringify({ 
               code: code,
-              puzzle_id: currentPuzzleId
+              puzzle_id: currentPuzzleId,
+              language: currentLanguage
             })
           });
           
@@ -167,11 +211,12 @@
       });
       
       resetButton.addEventListener('click', function() {
-        codeInput.value = initialCode;
+        codeInput.value = puzzleData[currentLanguage].initialCode;
         output.innerHTML = '';
       });
       
       showHintButton.addEventListener('click', function() {
+        hintText.textContent = puzzleData[currentLanguage].hint;
         hintText.style.display = 'inline';
         showHintButton.style.display = 'none';
       });
