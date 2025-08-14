@@ -108,7 +108,7 @@
           hint: <%= JSON.generate(@current_puzzle[:hint]) %>
         },
         javascript: {
-          initialCode: <%= JSON.generate(@current_puzzle[:initial_code_js] || "// JavaScriptで解いてみよう\n") %>,
+          initialCode: <%= JSON.generate(@current_puzzle[:initial_code_js] || "// Write JavaScript code here\n") %>,
           hint: <%= JSON.generate(@current_puzzle[:hint_js] || @current_puzzle[:hint]) %>
         }
       };

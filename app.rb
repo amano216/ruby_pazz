@@ -33,11 +33,21 @@ post '/run_code' do
   puzzle_id = data['puzzle_id'].to_i
   language = data['language'] || 'ruby'
   
+  # Debug logging
+  puts "=" * 50
+  puts "Received request:"
+  puts "Language: #{language}"
+  puts "Puzzle ID: #{puzzle_id}"
+  puts "Code (first 100 chars): #{code[0..100]}"
+  puts "=" * 50
+  
   puzzle = PUZZLES.find { |p| p[:id] == puzzle_id }
   
   result = if language == 'javascript'
+    puts "Executing as JavaScript..."
     run_javascript_code(code, puzzle[:test_cases])
   else
+    puts "Executing as Ruby..."
     run_ruby_code(code, puzzle[:test_cases])
   end
   
