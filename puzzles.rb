@@ -2,14 +2,14 @@ PUZZLES = [
   # 初級レベル (1-35)
   {
     id: 1,
-    title: "Hello Ruby!",
+    title: "Hello World!",
     level: "初級",
-    description: "「Hello Ruby!」と出力してみよう",
+    description: "「Hello World!」と出力してみよう",
     hint: "putsメソッドを使います",
     hint_js: "console.logメソッドを使います",
-    test_cases: [{ expected: "Hello Ruby!\n" }],
-    initial_code: "# putsを使って「Hello Ruby!」と出力\n",
-    initial_code_js: "// console.logを使って「Hello Ruby!」と出力\n"
+    test_cases: [{ expected: "Hello World!\n" }],
+    initial_code: "# putsを使って「Hello World!」と出力\n",
+    initial_code_js: "// console.logを使って「Hello World!」と出力\n"
   },
   {
     id: 2,
@@ -125,12 +125,12 @@ PUZZLES = [
     id: 12,
     title: "文字列の式展開",
     level: "初級",
-    description: "変数nameを使って「My name is Ruby」と出力",
+    description: "変数nameを使って「My name is Alice」と出力",
     hint: "\#{変数名}を使います",
     hint_js: "テンプレートリテラル `${変数名}` を使います",
-    test_cases: [{ expected: "My name is Ruby\n" }],
-    initial_code: "name = \"Ruby\"\n# 式展開を使って出力\n",
-    initial_code_js: "let name = \"Ruby\";\n// テンプレートリテラルを使って出力\n"
+    test_cases: [{ expected: "My name is Alice\n" }],
+    initial_code: "name = \"Alice\"\n# 式展開を使って出力\n",
+    initial_code_js: "let name = \"Alice\";\n// テンプレートリテラルを使って出力\n"
   },
   {
     id: 13,
@@ -334,12 +334,12 @@ PUZZLES = [
     id: 31,
     title: "大文字に変換",
     level: "初級",
-    description: "「ruby」を大文字に変換して出力",
+    description: "「hello」を大文字に変換して出力",
     hint: "upcaseメソッド",
     hint_js: "toUpperCase()メソッド",
-    test_cases: [{ expected: "RUBY\n" }],
-    initial_code: "text = \"ruby\"\n# 大文字に変換して出力\n",
-    initial_code_js: "let text = \"ruby\";\n// 大文字に変換して出力\n"
+    test_cases: [{ expected: "HELLO\n" }],
+    initial_code: "text = \"hello\"\n# 大文字に変換して出力\n",
+    initial_code_js: "let text = \"hello\";\n// 大文字に変換して出力\n"
   },
   {
     id: 32,
@@ -356,12 +356,12 @@ PUZZLES = [
     id: 33,
     title: "文字列の長さ",
     level: "初級",
-    description: "「Ruby」の文字数を出力",
+    description: "「Test」の文字数を出力",
     hint: "lengthメソッド",
     hint_js: "lengthプロパティ",
     test_cases: [{ expected: "4\n" }],
-    initial_code: "text = \"Ruby\"\n# 文字数を出力\n",
-    initial_code_js: "let text = \"Ruby\";\n// 文字数を出力\n"
+    initial_code: "text = \"Test\"\n# 文字数を出力\n",
+    initial_code_js: "let text = \"Test\";\n// 文字数を出力\n"
   },
   {
     id: 34,
@@ -490,23 +490,23 @@ PUZZLES = [
     id: 45,
     title: "配列のjoin",
     level: "中級",
-    description: "[\"Ruby\", \"is\", \"fun\"]を空白で連結して出力",
+    description: "[\"Code\", \"is\", \"fun\"]を空白で連結して出力",
     hint: "join(\" \")を使います",
     hint_js: "join(' ')を使います",
-    test_cases: [{ expected: "Ruby is fun\n" }],
-    initial_code: "array = [\"Ruby\", \"is\", \"fun\"]\n# 空白で連結して出力\n",
-    initial_code_js: "let array = [\"Ruby\", \"is\", \"fun\"];\n// 空白で連結して出力\n"
+    test_cases: [{ expected: "Code is fun\n" }],
+    initial_code: "array = [\"Code\", \"is\", \"fun\"]\n# 空白で連結して出力\n",
+    initial_code_js: "let array = [\"Code\", \"is\", \"fun\"];\n// 空白で連結して出力\n"
   },
   {
     id: 46,
     title: "文字列のsplit",
     level: "中級",
-    description: "「Ruby,Python,JavaScript」をカンマで分割して配列を出力",
+    description: "「Apple,Banana,Orange」をカンマで分割して配列を出力",
     hint: "split(\",\")を使います",
     hint_js: "split(',')を使います",
-    test_cases: [{ expected: "[\"Ruby\", \"Python\", \"JavaScript\"]\n", expected_js: "[ 'Ruby', 'Python', 'JavaScript' ]\n" }],
-    initial_code: "text = \"Ruby,Python,JavaScript\"\n# カンマで分割して配列を出力\n",
-    initial_code_js: "let text = \"Ruby,Python,JavaScript\";\n// カンマで分割して配列を出力\n"
+    test_cases: [{ expected: "[\"Apple\", \"Banana\", \"Orange\"]\n", expected_js: "[ 'Apple', 'Banana', 'Orange' ]\n" }],
+    initial_code: "text = \"Apple,Banana,Orange\"\n# カンマで分割して配列を出力\n",
+    initial_code_js: "let text = \"Apple,Banana,Orange\";\n// カンマで分割して配列を出力\n"
   },
   {
     id: 47,
@@ -523,23 +523,23 @@ PUZZLES = [
     id: 48,
     title: "文字列のstart_with?",
     level: "中級",
-    description: "「Ruby Programming」が「Ruby」で始まるか判定",
+    description: "「Hello Programming」が「Hello」で始まるか判定",
     hint: "start_with?メソッドを使います",
     hint_js: "startsWith()メソッドを使います",
     test_cases: [{ expected: "true\n" }],
-    initial_code: "text = \"Ruby Programming\"\n# 「Ruby」で始まるか判定して出力\n",
-    initial_code_js: "let text = \"Ruby Programming\";\n// 「Ruby」で始まるか判定して出力\n"
+    initial_code: "text = \"Hello Programming\"\n# 「Hello」で始まるか判定して出力\n",
+    initial_code_js: "let text = \"Hello Programming\";\n// 「Hello」で始まるか判定して出力\n"
   },
   {
     id: 49,
     title: "文字列のend_with?",
     level: "中級",
-    description: "「hello.rb」が「.rb」で終わるか判定",
+    description: "「hello.txt」が「.txt」で終わるか判定",
     hint: "end_with?メソッドを使います",
     hint_js: "endsWith()メソッドを使います",
     test_cases: [{ expected: "true\n" }],
-    initial_code: "text = \"hello.rb\"\n# 「.rb」で終わるか判定して出力\n",
-    initial_code_js: "let text = \"hello.rb\";\n// 「.rb」で終わるか判定して出力\n"
+    initial_code: "text = \"hello.txt\"\n# 「.txt」で終わるか判定して出力\n",
+    initial_code_js: "let text = \"hello.txt\";\n// 「.txt」で終わるか判定して出力\n"
   },
   {
     id: 50,
@@ -556,10 +556,10 @@ PUZZLES = [
     id: 51,
     title: "ハッシュの作成",
     level: "中級",
-    description: "{name: \"Ruby\", year: 1995}を出力",
+    description: "{name: \"Test\", year: 2024}を出力",
     hint: "ハッシュはキーと値のペア",
     hint_js: "オブジェクトを使います",
-    test_cases: [{ expected: "{:name=>\"Ruby\", :year=>1995}\n", expected_js: "{ name: 'Ruby', year: 1995 }\n" }],
+    test_cases: [{ expected: "{:name=>\"Test\", :year=>2024}\n", expected_js: "{ name: 'Test', year: 2024 }\n" }],
     initial_code: "# ハッシュを作成して出力\n",
     initial_code_js: "// オブジェクトを作成して出力\n"
   },
@@ -732,23 +732,23 @@ PUZZLES = [
     id: 67,
     title: "文字列のstrip",
     level: "中級",
-    description: "「  Ruby  」の前後の空白を除去して出力",
+    description: "「  Test  」の前後の空白を除去して出力",
     hint: "stripメソッドを使います",
     hint_js: "trim()メソッドを使います",
-    test_cases: [{ expected: "Ruby\n" }],
-    initial_code: "text = \"  Ruby  \"\n# 前後の空白を除去して出力\n",
-    initial_code_js: "let text = \"  Ruby  \";\n// 前後の空白を除去して出力\n"
+    test_cases: [{ expected: "Test\n" }],
+    initial_code: "text = \"  Test  \"\n# 前後の空白を除去して出力\n",
+    initial_code_js: "let text = \"  Test  \";\n// 前後の空白を除去して出力\n"
   },
   {
     id: 68,
     title: "文字列のchars",
     level: "中級",
-    description: "「Ruby」を1文字ずつの配列にして出力",
+    description: "「Test」を1文字ずつの配列にして出力",
     hint: "charsメソッドを使います",
     hint_js: "split('')またはArray.from()を使います",
-    test_cases: [{ expected: "[\"R\", \"u\", \"b\", \"y\"]\n", expected_js: "[ 'R', 'u', 'b', 'y' ]\n" }],
-    initial_code: "text = \"Ruby\"\n# 1文字ずつの配列にして出力\n",
-    initial_code_js: "let text = \"Ruby\";\n// 1文字ずつの配列にして出力\n"
+    test_cases: [{ expected: "[\"T\", \"e\", \"s\", \"t\"]\n", expected_js: "[ 'T', 'e', 's', 't' ]\n" }],
+    initial_code: "text = \"Test\"\n# 1文字ずつの配列にして出力\n",
+    initial_code_js: "let text = \"Test\";\n// 1文字ずつの配列にして出力\n"
   },
   {
     id: 69,
@@ -833,12 +833,12 @@ PUZZLES = [
     id: 76,
     title: "シンボルをProcに",
     level: "上級",
-    description: "[\"ruby\", \"python\"]を大文字に変換",
+    description: "[\"hello\", \"world\"]を大文字に変換",
     hint: "&:upcase を使います",
     hint_js: "map()とtoUpperCase()を使います",
-    test_cases: [{ expected: "[\"RUBY\", \"PYTHON\"]\n", expected_js: "[ 'RUBY', 'PYTHON' ]\n" }],
-    initial_code: "languages = [\"ruby\", \"python\"]\n# &:シンボルを使って大文字に変換\n",
-    initial_code_js: "let languages = [\"ruby\", \"python\"];\n// 大文字に変換\n"
+    test_cases: [{ expected: "[\"HELLO\", \"WORLD\"]\n", expected_js: "[ 'HELLO', 'WORLD' ]\n" }],
+    initial_code: "languages = [\"hello\", \"world\"]\n# &:シンボルを使って大文字に変換\n",
+    initial_code_js: "let languages = [\"hello\", \"world\"];\n// 大文字に変換\n"
   },
   {
     id: 77,
@@ -888,12 +888,12 @@ PUZZLES = [
     id: 81,
     title: "正規表現マッチ",
     level: "上級",
-    description: "「Ruby 3.0.0」からバージョン番号を抽出",
+    description: "「Version 3.0.0」からバージョン番号を抽出",
     hint: "/\\d+\\.\\d+\\.\\d+/",
     hint_js: "match()と正規表現を使います",
     test_cases: [{ expected: "3.0.0\n" }],
-    initial_code: "text = \"Ruby 3.0.0\"\n# 正規表現でバージョン番号を抽出して出力\n",
-    initial_code_js: "let text = \"Ruby 3.0.0\";\n// 正規表現でバージョン番号を抽出して出力\n"
+    initial_code: "text = \"Version 3.0.0\"\n# 正規表現でバージョン番号を抽出して出力\n",
+    initial_code_js: "let text = \"Version 3.0.0\";\n// 正規表現でバージョン番号を抽出して出力\n"
   },
   {
     id: 82,
@@ -1089,9 +1089,9 @@ PUZZLES = [
     description: "クラスに動的にアクセサを追加",
     hint: "attr_accessor を class_eval で",
     hint_js: "Object.definePropertyを使います",
-    test_cases: [{ expected: "Ruby\n" }],
-    initial_code: "class Book\nend\n\n# class_evalでtitleアクセサを追加\nBook.class_eval { attr_accessor :title }\n\n# titleを設定して出力\nbook = Book.new\nbook.title = \"Ruby\"\nputs book.title",
-    initial_code_js: "class Book {}\n\n// titleプロパティを動的に追加\n\n// titleを設定して出力\nlet book = new Book();\nbook.title = \"Ruby\";\nconsole.log(book.title);"
+    test_cases: [{ expected: "Test\n" }],
+    initial_code: "class Book\nend\n\n# class_evalでtitleアクセサを追加\nBook.class_eval { attr_accessor :title }\n\n# titleを設定して出力\nbook = Book.new\nbook.title = \"Test\"\nputs book.title",
+    initial_code_js: "class Book {}\n\n// titleプロパティを動的に追加\n\n// titleを設定して出力\nlet book = new Book();\nbook.title = \"Test\";\nconsole.log(book.title);"
   },
   {
     id: 100,
