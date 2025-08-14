@@ -64,19 +64,19 @@
         </div>
         
         <div class="language-selector">
-          <button class="lang-btn active" data-lang="ruby">Ruby</button>
+          <button class="lang-btn" data-lang="ruby">Ruby</button>
           <button class="lang-btn" data-lang="javascript">JavaScript</button>
         </div>
         
         <div class="code-editor">
           <div class="editor-header">
-            <span id="editor-language">Rubyコード</span>
+            <span id="editor-language">コード</span>
             <div class="editor-actions">
               <button id="run-code" class="run-button">実行 ▶</button>
               <button id="reset-code" class="reset-button">リセット</button>
             </div>
           </div>
-          <textarea id="code-input" class="code-input" spellcheck="false"><%= @current_puzzle[:initial_code] %></textarea>
+          <textarea id="code-input" class="code-input" spellcheck="false"></textarea>
         </div>
         
         <div class="output-area">
@@ -135,6 +135,7 @@
         }
       }
       
+      // Initialize with the saved language preference or default to ruby
       setLanguage(currentLanguage);
       
       langButtons.forEach(btn => {
