@@ -29,11 +29,17 @@ class RubyInterpreter {
   executeLine(line, allLines, currentIndex) {
     if (!line || line.startsWith('#')) return;
 
-    // puts
-    if (line.startsWith('puts ')) {
-      const expr = line.substring(5).trim();
+    // puts (also handle common typo 'put')
+    if (line.startsWith('puts ') || line.startsWith('put ')) {
+      const prefix = line.startsWith('puts ') ? 5 : 4;
+      const expr = line.substring(prefix).trim();
       const value = this.evaluate(expr);
-      this.output.push(value + '\n');
+      // Format arrays properly for output
+      if (Array.isArray(value)) {
+        this.output.push('[' + value.join(', ') + ']\n');
+      } else {
+        this.output.push(value + '\n');
+      }
       return;
     }
 
@@ -302,6 +308,7 @@ class RubyInterpreter {
       switch (methodName) {
         case 'length': return obj.length;
         case 'size': return obj.length;
+        case 'to_s': return '[' + obj.join(', ') + ']';
         case 'push': {
           const value = this.evaluate(args);
           obj.push(value);
