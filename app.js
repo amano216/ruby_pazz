@@ -169,8 +169,10 @@ class RubyInterpreter {
     }
 
     if (expr.includes('*')) {
-      const parts = expr.split('*').map(p => this.evaluate(p.trim()));
-      return parts.reduce((a, b) => a * b);
+      // Handle method calls before splitting by operator
+      const parts = this.splitByOperator(expr, '*');
+      const evaluatedParts = parts.map(p => this.evaluate(p.trim()));
+      return evaluatedParts.reduce((a, b) => a * b);
     }
 
     if (expr.includes('/')) {
@@ -287,6 +289,40 @@ class RubyInterpreter {
     }
 
     return obj;
+  }
+
+  splitByOperator(expr, operator) {
+    // Simple split that respects method calls
+    const parts = [];
+    let current = '';
+    let inMethodCall = false;
+    
+    for (let i = 0; i < expr.length; i++) {
+      const char = expr[i];
+      
+      if (char === '.') {
+        inMethodCall = true;
+      }
+      
+      if (char === operator && !inMethodCall) {
+        if (current) {
+          parts.push(current);
+          current = '';
+        }
+      } else {
+        current += char;
+        // Reset after processing the method name
+        if (inMethodCall && char !== '.' && !/[a-zA-Z_?]/.test(char)) {
+          inMethodCall = false;
+        }
+      }
+    }
+    
+    if (current) {
+      parts.push(current);
+    }
+    
+    return parts.length > 0 ? parts : [expr];
   }
 
   parseArrayElements(str) {
