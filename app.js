@@ -93,19 +93,20 @@ class RubyInterpreter {
   evaluate(expr) {
     if (!expr) return '';
 
-    // Remove comments
-    expr = expr.split('#')[0].trim();
-    if (!expr) return '';
-
-    // String literals
+    // String literals (check first to preserve # inside strings)
     if (expr.startsWith('"') && expr.endsWith('"')) {
       let str = expr.slice(1, -1);
       // String interpolation
       str = str.replace(/#\{([^}]+)\}/g, (match, p1) => {
-        return this.evaluate(p1);
+        const result = this.evaluate(p1.trim());
+        return result !== undefined ? result : '';
       });
       return str;
     }
+
+    // Remove comments (only for non-string expressions)
+    expr = expr.split('#')[0].trim();
+    if (!expr) return '';
 
     // Numbers
     if (/^-?\d+(\.\d+)?$/.test(expr)) {
