@@ -147,6 +147,27 @@ class RubyInterpreter {
       return obj;
     }
 
+    // Array/Hash access (e.g., array[1])
+    if (expr.includes('[') && expr.includes(']')) {
+      const match = expr.match(/^([a-zA-Z_]\w*)\[(.+)\]$/);
+      if (match) {
+        const varName = match[1];
+        const indexExpr = match[2];
+        
+        if (this.variables.hasOwnProperty(varName)) {
+          const obj = this.variables[varName];
+          const index = this.evaluate(indexExpr);
+          
+          if (Array.isArray(obj)) {
+            return obj[index];
+          } else if (typeof obj === 'object') {
+            // Hash access
+            return obj[index] || obj[':' + index];
+          }
+        }
+      }
+    }
+
     // Variables
     if (this.variables.hasOwnProperty(expr)) {
       return this.variables[expr];
