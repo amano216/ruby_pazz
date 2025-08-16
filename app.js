@@ -216,9 +216,9 @@ class RubyInterpreter {
   }
 
   callBuiltInMethod(obj, methodCall) {
-    // Check if methodCall contains operators
-    const operatorMatch = methodCall.match(/^([a-zA-Z_?]+)(.*)$/);
-    if (operatorMatch && operatorMatch[2]) {
+    // Check if methodCall contains operators (like to_i*2)
+    const operatorMatch = methodCall.match(/^([a-zA-Z_?]+)([\*\/\+\-\%].*)$/);
+    if (operatorMatch) {
       const methodName = operatorMatch[1];
       const restExpression = operatorMatch[2];
       
@@ -226,8 +226,9 @@ class RubyInterpreter {
       const result = this.callBuiltInMethodSimple(obj, methodName);
       
       // Then evaluate the rest expression with the result
-      if (restExpression) {
-        return this.evaluate(String(result) + restExpression);
+      if (restExpression && restExpression.length > 0) {
+        // Evaluate the complete expression with the method result
+        return this.evaluate(result + restExpression);
       }
       return result;
     }
@@ -324,8 +325,9 @@ class RubyInterpreter {
   }
 
   hasOperator(expr) {
-    // Check if expression contains arithmetic operators
-    return /[\+\-\*\/%]/.test(expr);
+    // Check if expression contains arithmetic operators (but not inside method names)
+    // Look for operators that are not preceded by a dot and letter
+    return /[^a-zA-Z_][\+\-\*\/%]/.test(expr) || /^[\*\/%]/.test(expr);
   }
 
   splitByOperator(expr, operator) {
