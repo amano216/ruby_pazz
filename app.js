@@ -136,8 +136,8 @@ class RubyInterpreter {
       return hash;
     }
 
-    // Method calls on objects
-    if (expr.includes('.')) {
+    // Method calls on objects (but check for operators first)
+    if (expr.includes('.') && !this.hasOperator(expr)) {
       const parts = expr.split('.');
       let obj = this.evaluate(parts[0]);
       for (let i = 1; i < parts.length; i++) {
@@ -201,10 +201,42 @@ class RubyInterpreter {
       return left < right;
     }
 
+    // Method calls with operators (like str.to_i*2)
+    if (expr.includes('.')) {
+      const parts = expr.split('.');
+      let obj = this.evaluate(parts[0]);
+      for (let i = 1; i < parts.length; i++) {
+        const methodCall = parts[i];
+        obj = this.callBuiltInMethod(obj, methodCall);
+      }
+      return obj;
+    }
+
     return expr;
   }
 
   callBuiltInMethod(obj, methodCall) {
+    // Check if methodCall contains operators
+    const operatorMatch = methodCall.match(/^([a-zA-Z_?]+)(.*)$/);
+    if (operatorMatch && operatorMatch[2]) {
+      const methodName = operatorMatch[1];
+      const restExpression = operatorMatch[2];
+      
+      // First apply the method
+      const result = this.callBuiltInMethodSimple(obj, methodName);
+      
+      // Then evaluate the rest expression with the result
+      if (restExpression) {
+        return this.evaluate(String(result) + restExpression);
+      }
+      return result;
+    }
+    
+    // Simple method call without operators
+    return this.callBuiltInMethodSimple(obj, methodCall);
+  }
+  
+  callBuiltInMethodSimple(obj, methodCall) {
     const methodName = methodCall.split('(')[0];
     const args = methodCall.includes('(') ? 
       methodCall.slice(methodCall.indexOf('(') + 1, -1) : '';
@@ -289,6 +321,11 @@ class RubyInterpreter {
     }
 
     return obj;
+  }
+
+  hasOperator(expr) {
+    // Check if expression contains arithmetic operators
+    return /[\+\-\*\/%]/.test(expr);
   }
 
   splitByOperator(expr, operator) {
