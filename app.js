@@ -50,9 +50,57 @@ class RubyInterpreter {
             !condition.includes('<=') && !condition.includes('>=')) {
           throw new Error('if文の条件で代入（=）が使われています。比較には==を使ってください');
         }
-        if (this.evaluate(condition)) {
-          this.executeBlock(lines, i + 1, endIdx);
+        
+        // Find else/elsif clauses
+        let elseIdx = -1;
+        let elsifIndices = [];
+        let depth = 0;
+        
+        for (let j = i + 1; j < endIdx; j++) {
+          const checkLine = lines[j].trim();
+          if (checkLine.startsWith('if ') || checkLine.startsWith('unless ') || 
+              checkLine.startsWith('while ') || checkLine.startsWith('def ')) {
+            depth++;
+          }
+          if (checkLine === 'end') {
+            depth--;
+          }
+          if (depth === 0) {
+            if (checkLine === 'else') {
+              elseIdx = j;
+            } else if (checkLine.startsWith('elsif ')) {
+              elsifIndices.push(j);
+            }
+          }
         }
+        
+        // Execute appropriate branch
+        if (this.evaluate(condition)) {
+          const blockEnd = elsifIndices.length > 0 ? elsifIndices[0] : 
+                           elseIdx > -1 ? elseIdx : endIdx;
+          this.executeBlock(lines, i + 1, blockEnd);
+        } else {
+          // Check elsif conditions
+          let executed = false;
+          for (let k = 0; k < elsifIndices.length; k++) {
+            const elsifIdx = elsifIndices[k];
+            const elsifLine = lines[elsifIdx].trim();
+            const elsifCondition = elsifLine.substring(6).trim();
+            if (this.evaluate(elsifCondition)) {
+              const nextIdx = k + 1 < elsifIndices.length ? elsifIndices[k + 1] :
+                             elseIdx > -1 ? elseIdx : endIdx;
+              this.executeBlock(lines, elsifIdx + 1, nextIdx);
+              executed = true;
+              break;
+            }
+          }
+          
+          // Execute else block if no elsif matched
+          if (!executed && elseIdx > -1) {
+            this.executeBlock(lines, elseIdx + 1, endIdx);
+          }
+        }
+        
         i = endIdx;
         continue;
       }
@@ -161,6 +209,11 @@ class RubyInterpreter {
         continue;
       }
 
+      // Skip else/elsif lines (they're handled by if statement)
+      if (line === 'else' || line.startsWith('elsif ')) {
+        continue;
+      }
+      
       // Regular line execution
       this.executeLine(line);
     }

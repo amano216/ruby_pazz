@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Multiple Puzzles</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .passed { background: #d4edda; }
+    .failed { background: #f8d7da; }
+    .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Testing Key Puzzles</h1>
+  <div id="summary"></div>
+  <div id="results"></div>
+  
+  <script src="puzzles.js"></script>
+  <script src="app.js"></script>
+  <script>
+    const interpreter = new RubyInterpreter();
+    const results = document.getElementById('results');
+    const summary = document.getElementById('summary');
+    
+    // Test specific puzzles that were problematic
+    const testCases = [
+      {
+        puzzle: 12,
+        code: 'name = "Ruby"\nputs "My name is #{name}"',
+        description: "文字列の式展開"
+      },
+      {
+        puzzle: 14,
+        code: 'str = "50"\nputs str.to_i * 2',
+        description: "文字列を数値に変換して2倍"
+      },
+      {
+        puzzle: 16,
+        code: 'array = [10, 20, 30]\nputs array[1]',
+        description: "配列の要素取得"
+      },
+      {
+        puzzle: 17,
+        code: 'array = [1, 2]\narray << 3\nputs array',
+        description: "配列に追加"
+      },
+      {
+        puzzle: 24,
+        code: 'if 5 > 3\n  puts "true"\nend',
+        description: "if文の基本"
+      },
+      {
+        puzzle: 25,
+        code: 'x = 10\nif x < 20\n  puts "small"\nelse\n  puts "big"\nend',
+        description: "if-else文"
+      },
+      {
+        puzzle: 26,
+        code: 'score = 85\nif score >= 90\n  puts "A"\nelsif score >= 80\n  puts "B"\nelse\n  puts "C"\nend',
+        description: "elsif文"
+      },
+      {
+        puzzle: 27,
+        code: '3.times do\n  puts "Hello"\nend',
+        description: "timesメソッド"
+      },
+      {
+        puzzle: 28,
+        code: '[1, 2, 3].each do |n|\n  puts n\nend',
+        description: "eachメソッド"
+      },
+      {
+        puzzle: 29,
+        code: 'for i in 1..3\n  puts i\nend',
+        description: "forループ"
+      },
+      {
+        puzzle: 30,
+        code: 'i = 1\nwhile i <= 3\n  puts i\n  i += 1\nend',
+        description: "whileループ"
+      },
+      {
+        puzzle: 43,
+        code: 'puts "ruby".upcase',
+        description: "文字列upcase"
+      },
+      {
+        puzzle: 45,
+        code: 'puts "hello".capitalize',
+        description: "文字列capitalize"
+      }
+    ];
+    
+    let passedCount = 0;
+    let failedCount = 0;
+    
+    testCases.forEach(test => {
+      const puzzle = PUZZLES.find(p => p.id === test.puzzle);
+      if (!puzzle) return;
+      
+      try {
+        interpreter.reset();
+        const result = interpreter.execute(test.code);
+        const expected = puzzle.testCases[0].expected;
+        const passed = result === expected;
+        
+        if (passed) {
+          passedCount++;
+          results.innerHTML += `
+            <div class="test-result passed">
+              <strong>✅ 問題 ${test.puzzle}: ${test.description}</strong><br>
+              <small>期待値: ${JSON.stringify(expected)} | 結果: ${JSON.stringify(result)}</small>
+            </div>
+          `;
+        } else {
+          failedCount++;
+          results.innerHTML += `
+            <div class="test-result failed">
+              <strong>❌ 問題 ${test.puzzle}: ${test.description}</strong><br>
+              <small>期待値: ${JSON.stringify(expected)} | 結果: ${JSON.stringify(result)}</small><br>
+              <pre>Code: ${test.code}</pre>
+            </div>
+          `;
+        }
+      } catch (error) {
+        failedCount++;
+        results.innerHTML += `
+          <div class="test-result failed">
+            <strong>⚠️ 問題 ${test.puzzle}: ${test.description}</strong><br>
+            <small>エラー: ${error.message}</small><br>
+            <pre>Code: ${test.code}</pre>
+          </div>
+        `;
+      }
+    });
+    
+    summary.innerHTML = `
+      <h2>テスト結果サマリー</h2>
+      <p>✅ 成功: ${passedCount}/${testCases.length}</p>
+      <p>❌ 失敗: ${failedCount}/${testCases.length}</p>
+      <p>成功率: ${Math.round(passedCount/testCases.length * 100)}%</p>
+    `;
+  </script>
+</body>
+</html>
