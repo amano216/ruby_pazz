@@ -930,10 +930,8 @@ class RubyInterpreter {
 
 // Main app logic
 document.addEventListener('DOMContentLoaded', function() {
-  // Use v2 interpreter if available, fallback to v1
-  const interpreter = typeof RubyInterpreterV2 !== 'undefined' ? 
-                      new RubyInterpreterV2() : 
-                      new RubyInterpreter();
+  // Use v2 interpreter
+  const interpreter = new RubyInterpreterV2();
   let currentPuzzleId = 1;
   let completedPuzzles = JSON.parse(localStorage.getItem('completedPuzzles') || '[]');
   let currentPuzzle = PUZZLES[0];

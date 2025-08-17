@@ -75,8 +75,27 @@ class RubyInterpreterV2 {
         continue;
       }
 
-      // Parse different statement types
-      if (line.startsWith('if ')) {
+      // Handle n.times do ... end
+      const timesDoMatch = line.match(/^(\d+)\.times\s+do\s*$/);
+      if (timesDoMatch) {
+        const count = parseInt(timesDoMatch[1]);
+        const endIdx = this.findEnd(lines, i);
+        const bodyStatements = [];
+        
+        for (let j = i + 1; j < endIdx; j++) {
+          const bodyLine = lines[j].trim();
+          if (bodyLine && !bodyLine.startsWith('#')) {
+            bodyStatements.push(this.parseStatement(bodyLine));
+          }
+        }
+        
+        statements.push({
+          type: 'times',
+          count: count,
+          body: { type: 'block', statements: bodyStatements }
+        });
+        i = endIdx + 1;
+      } else if (line.startsWith('if ')) {
         const ifNode = this.parseIf(lines, i);
         statements.push(ifNode);
         i = ifNode.endLine + 1;
@@ -1027,7 +1046,8 @@ class RubyInterpreterV2 {
            line.startsWith('while ') || line.startsWith('until ') ||
            line.startsWith('for ') || line.startsWith('def ') ||
            line.startsWith('class ') || line.startsWith('module ') ||
-           line.startsWith('case ') || line.startsWith('begin ');
+           line.startsWith('case ') || line.startsWith('begin ') ||
+           line.match(/^\d+\.times\s+do\s*$/);
   }
 
   // Evaluation methods
