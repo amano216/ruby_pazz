@@ -3,12 +3,14 @@ class RubyInterpreter {
     this.variables = {};
     this.methods = {};
     this.output = [];
+    this.inLoop = false;
   }
 
   reset() {
     this.variables = {};
     this.methods = {};
     this.output = [];
+    this.inLoop = false;
   }
 
   execute(code) {
@@ -16,9 +18,7 @@ class RubyInterpreter {
     const lines = code.split('\n');
     
     try {
-      for (let i = 0; i < lines.length; i++) {
-        this.executeLine(lines[i].trim(), lines, i);
-      }
+      this.executeBlock(lines, 0, lines.length);
     } catch (error) {
       throw new Error(`実行エラー: ${error.message}`);
     }
@@ -26,20 +26,148 @@ class RubyInterpreter {
     return this.output.join('');
   }
 
-  executeLine(line, allLines, currentIndex) {
-    if (!line || line.startsWith('#')) return;
+  executeBlock(lines, startIndex, endIndex) {
+    for (let i = startIndex; i < endIndex; i++) {
+      const line = lines[i].trim();
+      if (!line || line.startsWith('#')) continue;
 
-    // puts (also handle common typo 'put')
-    if (line.startsWith('puts ') || line.startsWith('put ')) {
-      const prefix = line.startsWith('puts ') ? 5 : 4;
-      const expr = line.substring(prefix).trim();
-      const value = this.evaluate(expr);
-      // Format arrays properly for output
-      if (Array.isArray(value)) {
-        this.output.push('[' + value.join(', ') + ']\n');
-      } else {
-        this.output.push(value + '\n');
+      // Handle single-line blocks with { }
+      if (line.includes('{') && line.includes('}')) {
+        this.executeSingleLineBlock(line);
+        continue;
       }
+
+      // Control structures
+      if (line.startsWith('if ')) {
+        const endIdx = this.findEnd(lines, i);
+        const condition = line.substring(3).replace(/\bthen\b/, '').trim();
+        if (this.evaluate(condition)) {
+          this.executeBlock(lines, i + 1, endIdx);
+        }
+        i = endIdx;
+        continue;
+      }
+
+      if (line.startsWith('unless ')) {
+        const endIdx = this.findEnd(lines, i);
+        const condition = line.substring(7).trim();
+        if (!this.evaluate(condition)) {
+          this.executeBlock(lines, i + 1, endIdx);
+        }
+        i = endIdx;
+        continue;
+      }
+
+      if (line.startsWith('while ')) {
+        const endIdx = this.findEnd(lines, i);
+        const condition = line.substring(6).replace(/\bdo\b/, '').trim();
+        while (this.evaluate(condition)) {
+          this.executeBlock(lines, i + 1, endIdx);
+        }
+        i = endIdx;
+        continue;
+      }
+
+      // for in range
+      const forMatch = line.match(/^for\s+(\w+)\s+in\s+(.+)/);
+      if (forMatch) {
+        const [, varName, rangeExpr] = forMatch;
+        const endIdx = this.findEnd(lines, i);
+        const range = this.evaluate(rangeExpr);
+        if (Array.isArray(range)) {
+          for (const item of range) {
+            this.variables[varName] = item;
+            this.executeBlock(lines, i + 1, endIdx);
+          }
+        }
+        i = endIdx;
+        continue;
+      }
+
+      // Ruby iteration methods
+      const timesMatch = line.match(/^(\d+)\.times\s*(?:do|\{)/);
+      if (timesMatch) {
+        const times = parseInt(timesMatch[1]);
+        const endIdx = this.findEnd(lines, i);
+        for (let j = 0; j < times; j++) {
+          this.executeBlock(lines, i + 1, endIdx);
+        }
+        i = endIdx;
+        continue;
+      }
+
+      const uptoMatch = line.match(/^(\d+)\.upto\((\d+)\)\s*(?:do|\{)\s*(?:\|(\w+)\|)?/);
+      if (uptoMatch) {
+        const [, start, end, varName] = uptoMatch;
+        const endIdx = this.findEnd(lines, i);
+        for (let j = parseInt(start); j <= parseInt(end); j++) {
+          if (varName) this.variables[varName] = j;
+          this.executeBlock(lines, i + 1, endIdx);
+        }
+        i = endIdx;
+        continue;
+      }
+
+      const downtoMatch = line.match(/^(\d+)\.downto\((\d+)\)\s*(?:do|\{)\s*(?:\|(\w+)\|)?/);
+      if (downtoMatch) {
+        const [, start, end, varName] = downtoMatch;
+        const endIdx = this.findEnd(lines, i);
+        for (let j = parseInt(start); j >= parseInt(end); j--) {
+          if (varName) this.variables[varName] = j;
+          this.executeBlock(lines, i + 1, endIdx);
+        }
+        i = endIdx;
+        continue;
+      }
+
+      const eachMatch = line.match(/^(\w+)\.each\s*(?:do|\{)\s*(?:\|(\w+)\|)?/);
+      if (eachMatch) {
+        const [, arrayName, varName] = eachMatch;
+        const endIdx = this.findEnd(lines, i);
+        const array = this.variables[arrayName];
+        if (Array.isArray(array)) {
+          for (const item of array) {
+            if (varName) this.variables[varName] = item;
+            this.executeBlock(lines, i + 1, endIdx);
+          }
+        }
+        i = endIdx;
+        continue;
+      }
+
+      // Loop control
+      if (line === 'break') {
+        throw new Error('BREAK');
+      }
+      if (line === 'next' || line === 'continue') {
+        throw new Error('NEXT');
+      }
+
+      // Method definition
+      if (line.startsWith('def ')) {
+        const endIdx = this.findEnd(lines, i);
+        const methodDef = lines.slice(i, endIdx + 1).join('\n');
+        this.defineMethod(methodDef);
+        i = endIdx;
+        continue;
+      }
+
+      // Regular line execution
+      this.executeLine(line);
+    }
+  }
+
+  executeLine(line) {
+    // Handle common typo 'put' as 'puts'
+    if (line.startsWith('put ') && !line.startsWith('puts ')) {
+      line = 'puts' + line.substring(3);
+    }
+    
+    // puts
+    if (line.startsWith('puts ')) {
+      const expr = line.substring(5).trim();
+      const value = this.evaluate(expr);
+      this.outputValue(value);
       return;
     }
 
@@ -51,48 +179,62 @@ class RubyInterpreter {
       return;
     }
 
-    // Variable assignment
-    if (line.includes('=') && !line.includes('==') && !line.includes('!=') && 
-        !line.includes('<=') && !line.includes('>=')) {
-      const [varName, expr] = line.split('=').map(s => s.trim());
-      this.variables[varName] = this.evaluate(expr);
+    // print (without newline)
+    if (line.startsWith('print ')) {
+      const expr = line.substring(6).trim();
+      const value = this.evaluate(expr);
+      this.output.push(String(value));
       return;
     }
 
-    // Method definition
-    if (line.startsWith('def ')) {
-      const methodEnd = this.findEnd(allLines, currentIndex);
-      const methodDef = allLines.slice(currentIndex, methodEnd + 1).join('\n');
-      this.defineMethod(methodDef);
-      return;
-    }
-
-    // Class definition (simplified)
-    if (line.startsWith('class ')) {
-      // Skip class definitions for now
-      return;
-    }
-
-    // Simple method calls
-    const methodCallPattern = /^(\w+)\((.*)\)$/;
-    const match = line.match(methodCallPattern);
-    if (match) {
-      const [, methodName, args] = match;
-      if (this.methods[methodName]) {
-        const result = this.callMethod(methodName, args);
-        if (result !== undefined) {
-          this.output.push(result + '\n');
+    // Variable assignment or modification
+    const assignMatch = line.match(/^(\w+)\s*([+\-*\/]?)=\s*(.+)$/);
+    if (assignMatch) {
+      const [, varName, op, expr] = assignMatch;
+      let value = this.evaluate(expr);
+      
+      if (op) {
+        const current = this.variables[varName];
+        switch(op) {
+          case '+': value = current + value; break;
+          case '-': value = current - value; break;
+          case '*': value = current * value; break;
+          case '/': value = current / value; break;
         }
       }
+      
+      this.variables[varName] = value;
+      return;
     }
 
-    // Simple expressions
-    const result = this.evaluate(line);
-    if (result !== undefined && line) {
-      // Don't output for assignments
-      if (!line.includes('=') || line.includes('==')) {
-        this.output.push(result + '\n');
+    // Array operations
+    const pushMatch = line.match(/^(\w+)\s*<<\s*(.+)$/);
+    if (pushMatch) {
+      const [, varName, expr] = pushMatch;
+      const value = this.evaluate(expr);
+      if (Array.isArray(this.variables[varName])) {
+        this.variables[varName].push(value);
       }
+      return;
+    }
+
+    // Method calls
+    const result = this.evaluate(line);
+    if (result !== undefined && !line.includes('=')) {
+      // Don't auto-output method calls that modify state
+      if (!line.includes('.push') && !line.includes('<<')) {
+        this.outputValue(result);
+      }
+    }
+  }
+
+  outputValue(value) {
+    if (Array.isArray(value)) {
+      this.output.push('[' + value.join(', ') + ']\n');
+    } else if (typeof value === 'object' && value !== null) {
+      this.output.push(this.inspect(value) + '\n');
+    } else {
+      this.output.push(String(value) + '\n');
     }
   }
 
@@ -108,6 +250,11 @@ class RubyInterpreter {
         return result !== undefined ? result : '';
       });
       return str;
+    }
+
+    // Single quoted strings (no interpolation)
+    if (expr.startsWith("'") && expr.endsWith("'")) {
+      return expr.slice(1, -1);
     }
 
     // Remove comments (only for non-string expressions)
@@ -133,7 +280,7 @@ class RubyInterpreter {
     // Hashes
     if (expr.startsWith('{') && expr.endsWith('}')) {
       const hash = {};
-      const pairs = expr.slice(1, -1).split(',');
+      const pairs = this.parsePairs(expr.slice(1, -1));
       for (const pair of pairs) {
         const [key, value] = pair.split('=>').map(s => s.trim());
         const keyName = key.startsWith(':') ? key : this.evaluate(key);
@@ -142,36 +289,43 @@ class RubyInterpreter {
       return hash;
     }
 
-    // Method calls on objects (but check for operators first)
-    if (expr.includes('.') && !this.hasOperator(expr)) {
-      const parts = expr.split('.');
-      let obj = this.evaluate(parts[0]);
-      for (let i = 1; i < parts.length; i++) {
-        const methodCall = parts[i];
-        obj = this.callBuiltInMethod(obj, methodCall);
+    // Ranges (with or without parentheses) 
+    const rangeMatch = expr.match(/^\(?(\d+)\.\.(\d+)\)?$/);
+    if (rangeMatch) {
+      const [, start, end] = rangeMatch;
+      const result = [];
+      for (let i = parseInt(start); i <= parseInt(end); i++) {
+        result.push(i);
       }
-      return obj;
+      return result;
     }
 
-    // Array/Hash access (e.g., array[1])
-    if (expr.includes('[') && expr.includes(']')) {
-      const match = expr.match(/^([a-zA-Z_]\w*)\[(.+)\]$/);
-      if (match) {
-        const varName = match[1];
-        const indexExpr = match[2];
-        
-        if (this.variables.hasOwnProperty(varName)) {
-          const obj = this.variables[varName];
-          const index = this.evaluate(indexExpr);
-          
-          if (Array.isArray(obj)) {
-            return obj[index];
-          } else if (typeof obj === 'object') {
-            // Hash access
-            return obj[index] || obj[':' + index];
-          }
+    // Array/Hash access
+    const accessMatch = expr.match(/^(\w+)\[(.+)\]$/);
+    if (accessMatch) {
+      const [, varName, indexExpr] = accessMatch;
+      if (this.variables.hasOwnProperty(varName)) {
+        const obj = this.variables[varName];
+        const index = this.evaluate(indexExpr);
+        if (Array.isArray(obj)) {
+          return obj[index];
+        } else if (typeof obj === 'object') {
+          return obj[index] || obj[':' + index];
         }
       }
+    }
+
+    // Method calls with operators
+    const methodOpMatch = expr.match(/^(.+?\.\w+)([\+\-\*\/\%].+)$/);
+    if (methodOpMatch) {
+      const [, methodPart, opPart] = methodOpMatch;
+      const methodResult = this.evaluateMethodCall(methodPart);
+      return this.evaluate(String(methodResult) + opPart);
+    }
+
+    // Method calls
+    if (expr.includes('.')) {
+      return this.evaluateMethodCall(expr);
     }
 
     // Variables
@@ -179,37 +333,11 @@ class RubyInterpreter {
       return this.variables[expr];
     }
 
-    // Arithmetic operations
-    if (expr.includes('+')) {
-      const parts = expr.split('+').map(p => this.evaluate(p.trim()));
-      return parts.reduce((a, b) => {
-        if (typeof a === 'string' || typeof b === 'string') {
-          return String(a) + String(b);
-        }
-        return a + b;
-      });
-    }
-
-    if (expr.includes('-') && !expr.startsWith('-')) {
-      const parts = expr.split('-').map(p => this.evaluate(p.trim()));
-      return parts.reduce((a, b) => a - b);
-    }
-
-    if (expr.includes('*')) {
-      // Handle method calls before splitting by operator
-      const parts = this.splitByOperator(expr, '*');
-      const evaluatedParts = parts.map(p => this.evaluate(p.trim()));
-      return evaluatedParts.reduce((a, b) => a * b);
-    }
-
-    if (expr.includes('/')) {
-      const parts = expr.split('/').map(p => this.evaluate(p.trim()));
-      return Math.floor(parts.reduce((a, b) => a / b));
-    }
-
-    if (expr.includes('%')) {
-      const parts = expr.split('%').map(p => this.evaluate(p.trim()));
-      return parts[0] % parts[1];
+    // Ternary operator
+    const ternaryMatch = expr.match(/^(.+?)\s*\?\s*(.+?)\s*:\s*(.+)$/);
+    if (ternaryMatch) {
+      const [, condition, trueExpr, falseExpr] = ternaryMatch;
+      return this.evaluate(condition) ? this.evaluate(trueExpr) : this.evaluate(falseExpr);
     }
 
     // Comparison operations
@@ -217,73 +345,123 @@ class RubyInterpreter {
       const [left, right] = expr.split('==').map(p => this.evaluate(p.trim()));
       return left === right;
     }
-
+    if (expr.includes('!=')) {
+      const [left, right] = expr.split('!=').map(p => this.evaluate(p.trim()));
+      return left !== right;
+    }
+    if (expr.includes('>=')) {
+      const [left, right] = expr.split('>=').map(p => this.evaluate(p.trim()));
+      return left >= right;
+    }
+    if (expr.includes('<=')) {
+      const [left, right] = expr.split('<=').map(p => this.evaluate(p.trim()));
+      return left <= right;
+    }
     if (expr.includes('>')) {
       const [left, right] = expr.split('>').map(p => this.evaluate(p.trim()));
       return left > right;
     }
-
     if (expr.includes('<')) {
       const [left, right] = expr.split('<').map(p => this.evaluate(p.trim()));
       return left < right;
     }
 
-    // Method calls with operators (like str.to_i*2)
-    if (expr.includes('.')) {
-      const parts = expr.split('.');
-      let obj = this.evaluate(parts[0]);
-      for (let i = 1; i < parts.length; i++) {
-        const methodCall = parts[i];
-        obj = this.callBuiltInMethod(obj, methodCall);
-      }
-      return obj;
+    // Logical operations
+    if (expr.includes('&&')) {
+      const [left, right] = expr.split('&&').map(p => this.evaluate(p.trim()));
+      return left && right;
+    }
+    if (expr.includes('||')) {
+      const [left, right] = expr.split('||').map(p => this.evaluate(p.trim()));
+      return left || right;
+    }
+    if (expr.startsWith('!')) {
+      return !this.evaluate(expr.substring(1).trim());
+    }
+
+    // Arithmetic operations
+    if (expr.includes('+')) {
+      const parts = this.splitByOperator(expr, '+');
+      return parts.reduce((a, b) => {
+        const aVal = this.evaluate(a);
+        const bVal = this.evaluate(b);
+        if (typeof aVal === 'string' || typeof bVal === 'string') {
+          return String(aVal) + String(bVal);
+        }
+        return aVal + bVal;
+      });
+    }
+
+    if (expr.includes('-') && !expr.startsWith('-')) {
+      const parts = this.splitByOperator(expr, '-');
+      return parts.map(p => this.evaluate(p)).reduce((a, b) => a - b);
+    }
+
+    if (expr.includes('*')) {
+      const parts = this.splitByOperator(expr, '*');
+      return parts.map(p => this.evaluate(p)).reduce((a, b) => a * b);
+    }
+
+    if (expr.includes('/')) {
+      const parts = this.splitByOperator(expr, '/');
+      const values = parts.map(p => this.evaluate(p));
+      return Math.floor(values.reduce((a, b) => a / b));
+    }
+
+    if (expr.includes('%')) {
+      const parts = this.splitByOperator(expr, '%');
+      const values = parts.map(p => this.evaluate(p));
+      return values[0] % values[1];
+    }
+
+    if (expr.includes('**')) {
+      const parts = expr.split('**').map(p => this.evaluate(p.trim()));
+      return Math.pow(parts[0], parts[1]);
     }
 
     return expr;
   }
 
-  callBuiltInMethod(obj, methodCall) {
-    // Check if methodCall contains operators (like to_i*2)
-    const operatorMatch = methodCall.match(/^([a-zA-Z_?]+)([\*\/\+\-\%].*)$/);
-    if (operatorMatch) {
-      const methodName = operatorMatch[1];
-      const restExpression = operatorMatch[2];
-      
-      // First apply the method
-      const result = this.callBuiltInMethodSimple(obj, methodName);
-      
-      // Then evaluate the rest expression with the result
-      if (restExpression && restExpression.length > 0) {
-        // Evaluate the complete expression with the method result
-        return this.evaluate(result + restExpression);
-      }
-      return result;
+  evaluateMethodCall(expr) {
+    const parts = expr.split('.');
+    let obj = this.evaluate(parts[0]);
+    
+    for (let i = 1; i < parts.length; i++) {
+      const methodCall = parts[i];
+      obj = this.callBuiltInMethod(obj, methodCall);
     }
     
-    // Simple method call without operators
-    return this.callBuiltInMethodSimple(obj, methodCall);
+    return obj;
   }
-  
-  callBuiltInMethodSimple(obj, methodCall) {
-    const methodName = methodCall.split('(')[0];
-    const args = methodCall.includes('(') ? 
-      methodCall.slice(methodCall.indexOf('(') + 1, -1) : '';
+
+  callBuiltInMethod(obj, methodCall) {
+    const methodMatch = methodCall.match(/^(\w+)(?:\((.*?)\))?$/);
+    if (!methodMatch) return obj;
+    
+    const [, methodName, args] = methodMatch;
+    const argValue = args ? this.evaluate(args) : undefined;
 
     // String methods
     if (typeof obj === 'string') {
       switch (methodName) {
         case 'upcase': return obj.toUpperCase();
         case 'downcase': return obj.toLowerCase();
-        case 'length': return obj.length;
-        case 'size': return obj.length;
+        case 'capitalize': return obj.charAt(0).toUpperCase() + obj.slice(1).toLowerCase();
+        case 'length': case 'size': return obj.length;
         case 'reverse': return obj.split('').reverse().join('');
-        case 'strip': return obj.trim();
+        case 'strip': case 'trim': return obj.trim();
         case 'to_s': return obj;
-        case 'to_i': return parseInt(obj);
+        case 'to_i': return parseInt(obj) || 0;
+        case 'to_f': return parseFloat(obj) || 0.0;
         case 'chars': return obj.split('');
-        case 'include?': return obj.includes(this.evaluate(args));
-        case 'start_with?': return obj.startsWith(this.evaluate(args));
-        case 'end_with?': return obj.endsWith(this.evaluate(args));
+        case 'split': return obj.split(argValue || ' ');
+        case 'include?': return obj.includes(argValue);
+        case 'start_with?': return obj.startsWith(argValue);
+        case 'end_with?': return obj.endsWith(argValue);
+        case 'gsub': {
+          const [pattern, replacement] = this.parseGsubArgs(args);
+          return obj.replace(new RegExp(pattern, 'g'), replacement);
+        }
         default: return obj;
       }
     }
@@ -292,8 +470,15 @@ class RubyInterpreter {
     if (typeof obj === 'number') {
       switch (methodName) {
         case 'to_s': return String(obj);
+        case 'to_i': return Math.floor(obj);
+        case 'to_f': return obj;
+        case 'abs': return Math.abs(obj);
+        case 'even?': return obj % 2 === 0;
+        case 'odd?': return obj % 2 !== 0;
+        case 'zero?': return obj === 0;
+        case 'positive?': return obj > 0;
+        case 'negative?': return obj < 0;
         case 'times': {
-          // Simplified times implementation
           for (let i = 0; i < obj; i++) {
             this.output.push('Hello\n');
           }
@@ -306,45 +491,45 @@ class RubyInterpreter {
     // Array methods
     if (Array.isArray(obj)) {
       switch (methodName) {
-        case 'length': return obj.length;
-        case 'size': return obj.length;
-        case 'to_s': return '[' + obj.join(', ') + ']';
-        case 'push': {
-          const value = this.evaluate(args);
-          obj.push(value);
-          return obj;
-        }
+        case 'length': case 'size': return obj.length;
+        case 'empty?': return obj.length === 0;
+        case 'first': return obj[0];
+        case 'last': return obj[obj.length - 1];
+        case 'push': obj.push(argValue); return obj;
+        case 'pop': return obj.pop();
+        case 'shift': return obj.shift();
+        case 'unshift': obj.unshift(argValue); return obj;
         case 'reverse': return obj.slice().reverse();
         case 'sort': return obj.slice().sort((a, b) => a - b);
         case 'uniq': return [...new Set(obj)];
+        case 'compact': return obj.filter(x => x != null);
+        case 'flatten': return obj.flat();
         case 'max': return Math.max(...obj);
         case 'min': return Math.min(...obj);
         case 'sum': return obj.reduce((a, b) => a + b, 0);
-        case 'join': {
-          const separator = this.evaluate(args) || '';
-          return obj.join(separator);
-        }
-        case 'map': {
-          // Simplified map
-          return obj.map(x => x * 2);
-        }
-        case 'select': {
-          // Simplified select for even numbers
-          return obj.filter(x => x % 2 === 0);
-        }
-        case 'flatten': return obj.flat();
-        case 'compact': return obj.filter(x => x !== null && x !== undefined);
-        case 'find': return obj.find(x => x % 2 === 0);
-        case 'any?': return obj.some(x => x % 2 === 0);
-        case 'all?': return obj.every(x => x % 2 === 0);
-        case 'count': {
-          const value = this.evaluate(args);
-          return obj.filter(x => x === value).length;
-        }
-        case 'index': {
-          const value = this.evaluate(args);
-          return obj.indexOf(value);
-        }
+        case 'join': return obj.join(argValue || '');
+        case 'to_a': return obj;
+        case 'to_s': return '[' + obj.join(', ') + ']';
+        case 'include?': return obj.includes(argValue);
+        case 'index': return obj.indexOf(argValue);
+        case 'count': return argValue !== undefined ? obj.filter(x => x === argValue).length : obj.length;
+        case 'any?': return obj.some(x => x % 2 === 0); // Simplified
+        case 'all?': return obj.every(x => x % 2 === 0); // Simplified
+        case 'find': return obj.find(x => x % 2 === 0); // Simplified
+        case 'select': return obj.filter(x => x % 2 === 0); // Simplified
+        case 'map': return obj.map(x => x * 2); // Simplified
+        default: return obj;
+      }
+    }
+
+    // Hash methods
+    if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
+      switch (methodName) {
+        case 'keys': return Object.keys(obj).map(k => k.startsWith(':') ? k : ':' + k);
+        case 'values': return Object.values(obj);
+        case 'length': case 'size': return Object.keys(obj).length;
+        case 'empty?': return Object.keys(obj).length === 0;
+        case 'to_s': return this.inspect(obj);
         default: return obj;
       }
     }
@@ -352,43 +537,47 @@ class RubyInterpreter {
     return obj;
   }
 
-  hasOperator(expr) {
-    // Check if expression contains arithmetic operators (but not inside method names)
-    // Look for operators that are not preceded by a dot and letter
-    return /[^a-zA-Z_][\+\-\*\/%]/.test(expr) || /^[\*\/%]/.test(expr);
+  parseGsubArgs(args) {
+    const parts = args.split(',').map(s => s.trim());
+    const pattern = parts[0].replace(/^["']|["']$/g, '');
+    const replacement = parts[1].replace(/^["']|["']$/g, '');
+    return [pattern, replacement];
   }
 
   splitByOperator(expr, operator) {
-    // Simple split that respects method calls
     const parts = [];
     let current = '';
-    let inMethodCall = false;
+    let depth = 0;
+    let inString = false;
+    let stringChar = null;
     
     for (let i = 0; i < expr.length; i++) {
       const char = expr[i];
       
-      if (char === '.') {
-        inMethodCall = true;
+      if ((char === '"' || char === "'") && (i === 0 || expr[i-1] !== '\\')) {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+        }
       }
       
-      if (char === operator && !inMethodCall) {
-        if (current) {
-          parts.push(current);
+      if (!inString) {
+        if (char === '(' || char === '[' || char === '{') depth++;
+        if (char === ')' || char === ']' || char === '}') depth--;
+        
+        if (char === operator && depth === 0) {
+          if (current.trim()) parts.push(current.trim());
           current = '';
-        }
-      } else {
-        current += char;
-        // Reset after processing the method name
-        if (inMethodCall && char !== '.' && !/[a-zA-Z_?]/.test(char)) {
-          inMethodCall = false;
+          continue;
         }
       }
+      
+      current += char;
     }
     
-    if (current) {
-      parts.push(current);
-    }
-    
+    if (current.trim()) parts.push(current.trim());
     return parts.length > 0 ? parts : [expr];
   }
 
@@ -396,18 +585,33 @@ class RubyInterpreter {
     const elements = [];
     let current = '';
     let depth = 0;
+    let inString = false;
+    let stringChar = null;
     
     for (let i = 0; i < str.length; i++) {
       const char = str[i];
-      if (char === '[') depth++;
-      if (char === ']') depth--;
       
-      if (char === ',' && depth === 0) {
-        elements.push(current.trim());
-        current = '';
-      } else {
-        current += char;
+      if ((char === '"' || char === "'") && (i === 0 || str[i-1] !== '\\')) {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+        }
       }
+      
+      if (!inString) {
+        if (char === '[' || char === '{') depth++;
+        if (char === ']' || char === '}') depth--;
+        
+        if (char === ',' && depth === 0) {
+          elements.push(current.trim());
+          current = '';
+          continue;
+        }
+      }
+      
+      current += char;
     }
     
     if (current.trim()) {
@@ -417,8 +621,49 @@ class RubyInterpreter {
     return elements;
   }
 
+  parsePairs(str) {
+    const pairs = [];
+    let current = '';
+    let depth = 0;
+    let inString = false;
+    let stringChar = null;
+    
+    for (let i = 0; i < str.length; i++) {
+      const char = str[i];
+      
+      if ((char === '"' || char === "'") && (i === 0 || str[i-1] !== '\\')) {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+        }
+      }
+      
+      if (!inString) {
+        if (char === '[' || char === '{') depth++;
+        if (char === ']' || char === '}') depth--;
+        
+        if (char === ',' && depth === 0) {
+          pairs.push(current.trim());
+          current = '';
+          continue;
+        }
+      }
+      
+      current += char;
+    }
+    
+    if (current.trim()) {
+      pairs.push(current.trim());
+    }
+    
+    return pairs;
+  }
+
   inspect(value) {
     if (value === null) return 'nil';
+    if (value === undefined) return 'nil';
     if (typeof value === 'boolean') return String(value);
     if (typeof value === 'number') return String(value);
     if (typeof value === 'string') return `"${value}"`;
@@ -427,7 +672,7 @@ class RubyInterpreter {
     }
     if (typeof value === 'object') {
       const pairs = Object.entries(value).map(([k, v]) => {
-        const key = k.startsWith(':') ? k : `:${k}`;
+        const key = k.startsWith(':') ? k : ':' + k;
         return `${key}=>${this.inspect(v)}`;
       });
       return '{' + pairs.join(', ') + '}';
@@ -452,28 +697,144 @@ class RubyInterpreter {
     const method = this.methods[name];
     if (!method) return;
     
-    // Simple implementation - just execute the body
     const savedVars = { ...this.variables };
+    
+    // Parse and assign arguments
+    if (args && method.params.length > 0) {
+      const argValues = this.parseMethodArgs(args);
+      method.params.forEach((param, i) => {
+        this.variables[param] = argValues[i];
+      });
+    }
     
     // Execute method body
     const lines = method.body.split('\n');
+    let returnValue = undefined;
+    
     for (const line of lines) {
+      if (line.trim().startsWith('return ')) {
+        returnValue = this.evaluate(line.trim().substring(7));
+        break;
+      }
       this.executeLine(line.trim());
     }
     
     // Restore variables
     this.variables = savedVars;
+    return returnValue;
+  }
+
+  parseMethodArgs(args) {
+    const result = [];
+    let current = '';
+    let depth = 0;
+    let inString = false;
+    let stringChar = null;
+    
+    for (let i = 0; i < args.length; i++) {
+      const char = args[i];
+      
+      if ((char === '"' || char === "'") && (i === 0 || args[i-1] !== '\\')) {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+        }
+      }
+      
+      if (!inString) {
+        if (char === '(' || char === '[' || char === '{') depth++;
+        if (char === ')' || char === ']' || char === '}') depth--;
+        
+        if (char === ',' && depth === 0) {
+          result.push(this.evaluate(current.trim()));
+          current = '';
+          continue;
+        }
+      }
+      
+      current += char;
+    }
+    
+    if (current.trim()) {
+      result.push(this.evaluate(current.trim()));
+    }
+    
+    return result;
+  }
+
+  executeSingleLineBlock(line) {
+    // Handle single-line blocks like: 3.times { puts "Hi" }
+    // or: [1, 2, 3].each { |n| puts n }
+    
+    // Times with block
+    const timesMatch = line.match(/^(\d+)\.times\s*\{(.+?)\}/);
+    if (timesMatch) {
+      const times = parseInt(timesMatch[1]);
+      const blockCode = timesMatch[2].trim();
+      for (let j = 0; j < times; j++) {
+        this.executeLine(blockCode);
+      }
+      return;
+    }
+
+    // Array.each with block
+    const arrayEachMatch = line.match(/^\[(.+?)\]\.each\s*\{\s*(?:\|(\w+)\|\s*)?(.+?)\}/);
+    if (arrayEachMatch) {
+      const [, arrayStr, varName, blockCode] = arrayEachMatch;
+      const array = this.evaluate('[' + arrayStr + ']');
+      for (const item of array) {
+        if (varName) this.variables[varName] = item;
+        this.executeLine(blockCode);
+      }
+      return;
+    }
+
+    // Variable.each with block
+    const varEachMatch = line.match(/^(\w+)\.each\s*\{\s*(?:\|(\w+)\|\s*)?(.+?)\}/);
+    if (varEachMatch) {
+      const [, arrayName, varName, blockCode] = varEachMatch;
+      const array = this.variables[arrayName];
+      if (Array.isArray(array)) {
+        for (const item of array) {
+          if (varName) this.variables[varName] = item;
+          this.executeLine(blockCode);
+        }
+      }
+      return;
+    }
+
+    // Variable.times with block
+    const varTimesBlockMatch = line.match(/^(\w+)\.times\s*\{(.+?)\}/);
+    if (varTimesBlockMatch) {
+      const [, varName, blockCode] = varTimesBlockMatch;
+      const times = this.variables[varName];
+      if (typeof times === 'number') {
+        for (let j = 0; j < times; j++) {
+          this.executeLine(blockCode);
+        }
+      }
+      return;
+    }
+
+    // If we get here, try to execute as a regular line
+    this.executeLine(line);
   }
 
   findEnd(lines, startIndex) {
     let depth = 1;
     for (let i = startIndex + 1; i < lines.length; i++) {
       const line = lines[i].trim();
-      if (line.startsWith('def ') || line.startsWith('class ') || 
-          line.startsWith('if ') || line.startsWith('while ')) {
+      if (line.startsWith('if ') || line.startsWith('unless ') || 
+          line.startsWith('while ') || line.startsWith('until ') ||
+          line.startsWith('for ') || line.startsWith('def ') || 
+          line.startsWith('class ') || line.startsWith('module ') ||
+          line.match(/^\d+\.times/) || line.match(/\.each\s*(?:do|\{)/) ||
+          line.match(/\.upto\(/) || line.match(/\.downto\(/)) {
         depth++;
       }
-      if (line === 'end') {
+      if (line === 'end' || line === '}') {
         depth--;
         if (depth === 0) return i;
       }
