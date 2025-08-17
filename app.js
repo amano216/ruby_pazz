@@ -40,7 +40,16 @@ class RubyInterpreter {
       // Control structures
       if (line.startsWith('if ')) {
         const endIdx = this.findEnd(lines, i);
+        // Check if there's a matching 'end'
+        if (endIdx === lines.length - 1 && lines[endIdx].trim() !== 'end') {
+          throw new Error('if文には対応するendが必要です');
+        }
         const condition = line.substring(3).replace(/\bthen\b/, '').trim();
+        // Check for assignment in condition (common mistake)
+        if (condition.includes('=') && !condition.includes('==') && !condition.includes('!=') && 
+            !condition.includes('<=') && !condition.includes('>=')) {
+          throw new Error('if文の条件で代入（=）が使われています。比較には==を使ってください');
+        }
         if (this.evaluate(condition)) {
           this.executeBlock(lines, i + 1, endIdx);
         }
@@ -160,7 +169,16 @@ class RubyInterpreter {
   executeLine(line) {
     // Handle common typo 'put' as 'puts'
     if (line.startsWith('put ') && !line.startsWith('puts ')) {
-      line = 'puts' + line.substring(3);
+      const expr = line.substring(4).trim();
+      // Check if it looks like a bare word (not a variable, string, or expression)
+      if (expr && !expr.startsWith('"') && !expr.startsWith("'") && 
+          !this.variables.hasOwnProperty(expr) && !/^\d/.test(expr) &&
+          !expr.includes('.') && !expr.includes('(')) {
+        // Treat it as a string literal
+        line = 'puts "' + expr + '"';
+      } else {
+        line = 'puts' + line.substring(3);
+      }
     }
     
     // puts
@@ -824,6 +842,8 @@ class RubyInterpreter {
 
   findEnd(lines, startIndex) {
     let depth = 1;
+    const startLine = lines[startIndex].trim();
+    
     for (let i = startIndex + 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (line.startsWith('if ') || line.startsWith('unless ') || 
@@ -839,6 +859,13 @@ class RubyInterpreter {
         if (depth === 0) return i;
       }
     }
+    
+    // If we get here, no matching 'end' was found
+    if (startLine.startsWith('if ') || startLine.startsWith('unless ') || 
+        startLine.startsWith('while ') || startLine.startsWith('def ')) {
+      throw new Error(`${startLine.split(' ')[0]}文に対応するendがありません`);
+    }
+    
     return lines.length - 1;
   }
 }
