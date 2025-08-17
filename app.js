@@ -350,6 +350,11 @@ class RubyInterpreter {
     if (this.variables.hasOwnProperty(expr)) {
       return this.variables[expr];
     }
+    
+    // Check if it looks like a variable name (simple word)
+    if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(expr)) {
+      throw new Error(`未定義の変数またはメソッド: ${expr}`);
+    }
 
     // Ternary operator
     const ternaryMatch = expr.match(/^(.+?)\s*\?\s*(.+?)\s*:\s*(.+)$/);
