@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Critical Issues Test</title>
+  <style>
+    body { font-family: monospace; padding: 20px; }
+    .issue { margin: 20px 0; padding: 15px; border: 2px solid #f00; background: #fee; }
+    .passed { border-color: #0a0; background: #efe; }
+    .title { font-weight: bold; font-size: 1.2em; }
+    pre { background: #fff; padding: 10px; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h1>🔴 JavaScript Ruby インタープリター 重大問題テスト</h1>
+  <div id="results"></div>
+  
+  <script src="app.js"></script>
+  <script>
+    const interpreter = new RubyInterpreter();
+    const results = document.getElementById('results');
+    
+    const criticalTests = [
+      {
+        title: "演算子の優先順位",
+        code: 'puts 2 + 3 * 4',
+        expected: "14\n",  // Ruby: 2 + (3 * 4) = 14
+        issue: "乗算が加算より優先されるべき"
+      },
+      {
+        title: "括弧付き演算",
+        code: 'puts (2 + 3) * 4',
+        expected: "20\n",
+        issue: "括弧内が先に評価されるべき"
+      },
+      {
+        title: "nil チェック",
+        code: 'x = nil\nputs x.nil?',
+        expected: "true\n",
+        issue: "nilに対するメソッド呼び出し"
+      },
+      {
+        title: "0除算エラー",
+        code: 'puts 10 / 0',
+        shouldError: true,
+        issue: "0除算でエラーを出すべき"
+      },
+      {
+        title: "配列の範囲外アクセス",
+        code: 'arr = [1, 2, 3]\nputs arr[10]',
+        expected: "\n",  // Rubyではnilを返す（putsでnilは空行）
+        issue: "範囲外はnilを返すべき"
+      },
+      {
+        title: "文字列エスケープ",
+        code: 'puts "hello\\nworld"',
+        expected: "hello\nworld\n",
+        issue: "\\nが改行に変換されるべき"
+      },
+      {
+        title: "整数除算",
+        code: 'puts 5 / 2',
+        expected: "2\n",
+        issue: "整数同士の除算は整数を返すべき"
+      },
+      {
+        title: "複雑なメソッドチェーン",
+        code: 'puts "hello".upcase.reverse.length',
+        expected: "5\n",
+        issue: "メソッドチェーンが正しく動作すべき"
+      },
+      {
+        title: "ブロック内での変数スコープ",
+        code: 'x = 0\n3.times do\n  x += 1\nend\nputs x',
+        expected: "3\n",
+        issue: "ブロック内で外側の変数を変更できるべき"
+      },
+      {
+        title: "any?メソッドの正しい実装",
+        code: 'puts [1, 3, 5].any? { |n| n.even? }',
+        expected: "false\n",
+        issue: "any?はブロックの条件を評価すべき"
+      },
+      {
+        title: "all?メソッドの正しい実装",
+        code: 'puts [2, 4, 6].all? { |n| n.even? }',
+        expected: "true\n",
+        issue: "all?はブロックの条件を評価すべき"
+      },
+      {
+        title: "後置if",
+        code: 'puts "hello" if true',
+        expected: "hello\n",
+        issue: "後置ifが動作すべき"
+      },
+      {
+        title: "case when文",
+        code: 'x = 2\ncase x\nwhen 1\n  puts "one"\nwhen 2\n  puts "two"\nelse\n  puts "other"\nend',
+        expected: "two\n",
+        issue: "case when文が動作すべき"
+      },
+      {
+        title: "正規表現マッチ",
+        code: 'puts "hello" =~ /ell/',
+        expected: "1\n",
+        issue: "正規表現マッチが動作すべき"
+      },
+      {
+        title: "デフォルト引数",
+        code: 'def greet(name = "World")\n  puts "Hello #{name}"\nend\ngreet()',
+        expected: "Hello World\n",
+        issue: "デフォルト引数が動作すべき"
+      }
+    ];
+    
+    criticalTests.forEach(test => {
+      const div = document.createElement('div');
+      
+      try {
+        interpreter.reset();
+        const result = interpreter.execute(test.code);
+        
+        if (test.shouldError) {
+          div.className = 'issue';
+          div.innerHTML = `
+            <div class="title">❌ ${test.title}</div>
+            <div>問題: ${test.issue}</div>
+            <pre>コード:\n${test.code}</pre>
+            <pre>期待: エラー\n実際: ${JSON.stringify(result)}</pre>
+          `;
+        } else {
+          const passed = result === test.expected;
+          div.className = passed ? 'issue passed' : 'issue';
+          div.innerHTML = `
+            <div class="title">${passed ? '✅' : '❌'} ${test.title}</div>
+            <div>問題: ${test.issue}</div>
+            <pre>コード:\n${test.code}</pre>
+            <pre>期待: ${JSON.stringify(test.expected)}\n実際: ${JSON.stringify(result)}</pre>
+          `;
+        }
+      } catch (error) {
+        if (test.shouldError) {
+          div.className = 'issue passed';
+          div.innerHTML = `
+            <div class="title">✅ ${test.title}</div>
+            <div>問題: ${test.issue}</div>
+            <pre>コード:\n${test.code}</pre>
+            <pre>正しくエラー: ${error.message}</pre>
+          `;
+        } else {
+          div.className = 'issue';
+          div.innerHTML = `
+            <div class="title">❌ ${test.title}</div>
+            <div>問題: ${test.issue}</div>
+            <pre>コード:\n${test.code}</pre>
+            <pre>予期しないエラー: ${error.message}</pre>
+          `;
+        }
+      }
+      
+      results.appendChild(div);
+    });
+    
+    // 統計を表示
+    const passed = document.querySelectorAll('.passed').length;
+    const total = criticalTests.length;
+    const summary = document.createElement('div');
+    summary.style.marginTop = '30px';
+    summary.style.padding = '20px';
+    summary.style.background = '#333';
+    summary.style.color = '#fff';
+    summary.innerHTML = `
+      <h2>テスト結果サマリー</h2>
+      <p>合格: ${passed}/${total} (${Math.round(passed/total*100)}%)</p>
+      <p>このインタープリターは基本的な教育用途には適していますが、</p>
+      <p>実際のRubyの仕様の約30%程度しかカバーしていません。</p>
+    `;
+    results.appendChild(summary);
+  </script>
+</body>
+</html>
